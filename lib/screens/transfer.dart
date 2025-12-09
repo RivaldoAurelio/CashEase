@@ -1,11 +1,13 @@
+// lib/screens/transfer.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter_contacts/flutter_contacts.dart'; // Tambahan
 import 'passwordScreen.dart';
 import 'dart:async';
 import 'package:intl/intl.dart';
 import '../services/currency_service.dart';
+// GANTI: Import FirestoreService menggantikan DatabaseHelper
 import '../services/firestore_service.dart'; 
 
 class Transfer {
@@ -34,14 +36,25 @@ class TransferPage extends StatefulWidget {
 }
 
 class _TransferPageState extends State<TransferPage> {
+  // GANTI: Inisialisasi FirestoreService
   final FirestoreService _firestoreService = FirestoreService();
 
   final List<String> _supportedCurrencies = [
-    'IDR', 'JPY', 'AUD', 'CNY', 'USD', 'EUR',
+    'IDR',
+    'JPY',
+    'AUD',
+    'CNY',
+    'USD',
+    'EUR',
   ];
 
   final Map<String, String> _currencySymbols = const {
-    'IDR': 'Rp ', 'JPY': '¥ ', 'AUD': 'A\$ ', 'CNY': 'CN¥ ', 'USD': '\$ ', 'EUR': '€ ',
+    'IDR': 'Rp ',
+    'JPY': '¥ ',
+    'AUD': 'A\$ ',
+    'CNY': 'CN¥ ',
+    'USD': '\$ ',
+    'EUR': '€ ',
   };
 
   String _formatCurrency(int number) {
@@ -62,7 +75,26 @@ class _TransferPageState extends State<TransferPage> {
       logoAssetPath: 'asset/elogo1.png',
       alias: 'Ayah',
     ),
-    // ... beneficiaries lain tetap sama ...
+    Transfer(
+      name: 'Jane Smith',
+      bankName: 'Bank Mandiri',
+      accountNumber: '0987654321',
+      logoAssetPath: 'asset/elogo2.png',
+      alias: 'Ibu',
+    ),
+    Transfer(
+      name: 'Michael Johnson',
+      bankName: 'Bank BNI',
+      accountNumber: '1122334455',
+      logoAssetPath: 'asset/elogo5.png',
+      alias: 'Toko Kelontong',
+    ),
+    Transfer(
+      name: 'Emily Davis',
+      bankName: 'Dana',
+      accountNumber: '08123456789',
+      logoAssetPath: 'asset/elogo3.png',
+    ),
   ];
 
   List<Transfer> _filteredBeneficiaries = [];
@@ -78,49 +110,16 @@ class _TransferPageState extends State<TransferPage> {
   void _filterBeneficiaries() {
     final query = _searchController.text.toLowerCase();
     setState(() {
-      _filteredBeneficiaries = _beneficiaries.where((b) {
-        return b.name.toLowerCase().contains(query) ||
-            b.accountNumber.contains(query) ||
-            b.alias.toLowerCase().contains(query);
-      }).toList();
+      _filteredBeneficiaries =
+          _beneficiaries.where((b) {
+            return b.name.toLowerCase().contains(query) ||
+                b.accountNumber.contains(query) ||
+                b.alias.toLowerCase().contains(query);
+          }).toList();
     });
   }
 
-  // FUNGSI BARU: Ambil Kontak dari HP
-  Future<void> _pickContact() async {
-    // 1. Minta izin
-    if (await FlutterContacts.requestPermission()) {
-      // 2. Buka picker bawaan HP
-      final contact = await FlutterContacts.openExternalPick();
-
-      if (contact != null) {
-        if (contact.phones.isNotEmpty) {
-          // Ambil nomor pertama
-          String phone = contact.phones.first.number;
-          // Bersihkan karakter aneh (-, spasi, dll)
-          phone = phone.replaceAll(RegExp(r'[^\d+]'), '');
-          
-          // Masukkan ke search bar agar user bisa langsung lanjut
-          setState(() {
-            _searchController.text = phone;
-          });
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-             SnackBar(content: Text("Kontak terpilih: ${contact.displayName}")),
-          );
-        } else {
-           ScaffoldMessenger.of(context).showSnackBar(
-             const SnackBar(content: Text("Kontak ini tidak memiliki nomor telepon.")),
-          );
-        }
-      }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Izin kontak ditolak.")),
-      );
-    }
-  }
-
+  // Helper untuk mendapatkan saldo dari Firestore
   Future<int> _fetchBalance() async {
     final userMap = await _firestoreService.getUserByPhone(widget.phoneNumber);
     if (userMap != null) {
@@ -129,28 +128,446 @@ class _TransferPageState extends State<TransferPage> {
     return 0;
   }
 
-  // ... (Metode _showTransferDialog dan lainnya tetap sama seperti kode asli Anda) ...
-  // Saya persingkat bagian ini karena tidak berubah, tapi pastikan copy-paste 
-  // bagian logika transfer dialog yang Anda punya sebelumnya ke sini.
-  
   void _showTransferDialog(Transfer transfer) {
-      // Paste logika _showTransferDialog asli Anda di sini...
-      // (Kode dialog transfer tidak berubah, hanya logika UI akses kontak yang berubah)
-      // Untuk menghemat ruang response, saya asumsikan Anda memakai kode dialog lama.
-      // Jika perlu saya tulis ulang full dialognya, beri tahu.
-      // Kode di bawah ini Placeholder agar struktur valid:
-      final TextEditingController amountController = TextEditingController();
-      // ... (lanjutan kode asli) ...
-      // Agar kode valid, saya sertakan versi ringkas yang bisa dicompile
-      showDialog(context: context, builder: (ctx) => AlertDialog(title: Text("Transfer ke ${transfer.name}"), content: Text("Fitur Transfer Full ada di kode lama")));
+    final TextEditingController amountController = TextEditingController();
+    final ValueNotifier<String> formattedAmount = ValueNotifier('');
+    final ValueNotifier<String> selectedCurrency = ValueNotifier(
+      _supportedCurrencies.first,
+    );
+    final formKey = GlobalKey<FormState>();
+    final rootContext = context;
+
+    void updateFormattedAmount(String value, String currency) {
+      String cleanText = value.replaceAll(RegExp(r'[^\d\.]'), '');
+      if (cleanText.isEmpty) {
+        formattedAmount.value = '';
+        return;
+      }
+
+      if (currency != 'IDR') {
+        double? amount = double.tryParse(cleanText);
+        if (amount != null) {
+          formattedAmount.value = _formatForeignCurrency(amount, currency);
+        } else {
+          formattedAmount.value = '';
+        }
+      } else {
+        int? amount = int.tryParse(cleanText.split('.')[0]);
+        if (amount != null) {
+          formattedAmount.value = _formatCurrency(amount);
+        } else {
+          formattedAmount.value = '';
+        }
+      }
+    }
+
+    final List<TextInputFormatter> inputFormatters = [
+      FilteringTextInputFormatter.allow(RegExp(r'^\d*[\.\,]?\d*')),
+    ];
+
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Text('Transfer Uang ke ${transfer.name}'),
+            content: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // MODIFIKASI: Ambil saldo via FutureBuilder ke Firestore
+                  FutureBuilder<int>(
+                    future: _fetchBalance(),
+                    builder: (context, snapshot) {
+                      final balance = snapshot.data ?? 0;
+                      // Tampilkan loading jika belum ada data
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                         return const Padding(
+                           padding: EdgeInsets.only(bottom: 16),
+                           child: Text('Memuat saldo...', style: TextStyle(color: Colors.grey)),
+                         );
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Text(
+                          'Saldo Anda: ${_formatCurrency(balance)}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            color: Colors.deepPurple,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  Row(
+                    children: [
+                      ValueListenableBuilder<String>(
+                        valueListenable: selectedCurrency,
+                        builder: (context, currentCurrency, child) {
+                          return DropdownButton<String>(
+                            value: currentCurrency,
+                            onChanged: (String? newValue) {
+                              if (newValue != null) {
+                                selectedCurrency.value = newValue;
+                                updateFormattedAmount(
+                                  amountController.text,
+                                  newValue,
+                                );
+                              }
+                            },
+                            items:
+                                _supportedCurrencies.map((String value) {
+                                  return DropdownMenuItem<String>(
+                                    value: value,
+                                    child: Text(value),
+                                  );
+                                }).toList(),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ValueListenableBuilder<String>(
+                          valueListenable: selectedCurrency,
+                          builder: (context, currentCurrency, child) {
+                            return TextFormField(
+                              controller: amountController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: inputFormatters,
+                              decoration: InputDecoration(
+                                labelText: 'Jumlah',
+                                prefixText:
+                                    _currencySymbols[currentCurrency] ?? '',
+                              ),
+                              onChanged:
+                                  (value) => updateFormattedAmount(
+                                    value,
+                                    currentCurrency,
+                                  ),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Wajib diisi';
+                                }
+                                if (double.tryParse(
+                                      value.replaceAll(',', '.'),
+                                    ) ==
+                                    null) {
+                                  return 'Jumlah tidak valid';
+                                }
+                                return null;
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  ValueListenableBuilder<String>(
+                    valueListenable: formattedAmount,
+                    builder: (_, value, __) {
+                      return Text(
+                        value.isNotEmpty ? 'Konversi IDR: $value' : '',
+                        style: const TextStyle(
+                          color: Colors.black54,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Batal'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  if (formKey.currentState!.validate()) {
+                    final amountText = amountController.text.replaceAll(
+                      ',',
+                      '.',
+                    );
+                    final double foreignAmount = double.parse(amountText);
+                    final String currency = selectedCurrency.value;
+                    int finalAmountIDR = 0;
+
+                    Navigator.pop(context); // Tutup Dialog Input
+
+                    // 1. Proses Konversi
+                    if (currency != 'IDR') {
+                      final rate = await CurrencyService().getExchangeRate(
+                        currency,
+                        'IDR',
+                      );
+
+                      if (rate == null) {
+                        if (!mounted) return;
+                        _showTransferErrorBanner(
+                          rootContext,
+                          'Gagal mengambil nilai tukar $currency.',
+                        );
+                        return;
+                      }
+
+                      finalAmountIDR = (foreignAmount * rate).round();
+                    } else {
+                      finalAmountIDR = foreignAmount.round();
+                    }
+
+                    // 2. Cek Saldo (VALIDASI KE FIRESTORE)
+                    // Ambil saldo terbaru langsung dari cloud untuk validasi
+                    final currentBalance = await _fetchBalance();
+
+                    if (finalAmountIDR > currentBalance) {
+                      if (!mounted) return;
+                      _showTransferErrorBanner(
+                        rootContext,
+                        'Saldo tidak cukup (${_formatCurrency(currentBalance)}) untuk transfer ${_formatCurrency(finalAmountIDR)}.',
+                      );
+                      return;
+                    }
+
+                    // 3. Tampilkan Konfirmasi
+                    final confirmed = await _showConversionConfirmation(
+                      rootContext,
+                      transfer,
+                      foreignAmount,
+                      currency,
+                      finalAmountIDR,
+                    );
+
+                    if (confirmed == true) {
+                      // 4. Verifikasi PIN
+                      final verified = await Navigator.push<bool>(
+                        rootContext,
+                        MaterialPageRoute(
+                          builder:
+                              (_) => PasswordScreen(
+                                phoneNumber: widget.phoneNumber,
+                              ),
+                        ),
+                      );
+
+                      if (verified == true) {
+                        if (!mounted) return;
+
+                        // 5. LAKUKAN TRANSAKSI KE FIRESTORE
+                        // Fungsi addTransaction di service akan otomatis mengurangi saldo
+                        // jika tipe transaksinya bukan 'topup'/'income'.
+                        final success = await _firestoreService.addTransaction(
+                          userPhone: widget.phoneNumber,
+                          type: 'transfer', 
+                          amount: finalAmountIDR, // Kirim amount positif, service akan menguranginya
+                          description: 'Transfer of ${currency} ${foreignAmount} to ${transfer.name}',
+                          recipientName: transfer.name,
+                          recipientPhone: transfer.accountNumber,
+                        );
+
+                        if (success) {
+                          // 6. Tampilkan Sukses
+                          if (!mounted) return;
+                          _showTransferSuccessBanner(
+                            rootContext,
+                            finalAmountIDR,
+                            transfer.name,
+                            foreignAmount,
+                            currency,
+                          );
+                        } else {
+                          // Gagal (misal koneksi putus atau saldo tiba-tiba kurang saat di server)
+                          if (!mounted) return;
+                          _showTransferErrorBanner(
+                            rootContext,
+                            'Transfer gagal. Silakan coba lagi.',
+                          );
+                        }
+                      }
+                    }
+                  }
+                },
+                child: const Text('Transfer'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  Future<bool?> _showConversionConfirmation(
+    BuildContext context,
+    Transfer transfer,
+    double foreignAmount,
+    String currency,
+    int finalAmountIDR,
+  ) {
+    return showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text('Konfirmasi Transfer'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Penerima: ${transfer.name}'),
+                Text('Rekening: ${transfer.accountNumber}'),
+                const Divider(),
+                Text(
+                  currency == 'IDR'
+                      ? 'Jumlah Transfer: ${_formatCurrency(finalAmountIDR)}'
+                      : 'Jumlah Dikonversi:',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                if (currency != 'IDR')
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Dari: ${_formatForeignCurrency(foreignAmount, currency)}',
+                        ),
+                        Text(
+                          'Ke: ${_formatCurrency(finalAmountIDR)}',
+                          style: const TextStyle(
+                            color: Colors.deepPurple,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Text(
+                          'Catatan: Nilai tukar adalah simulasi (ditarik dari API).',
+                          style: TextStyle(fontSize: 12, color: Colors.red),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Text(
+                    _formatCurrency(finalAmountIDR),
+                  ), 
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepPurple,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Konfirmasi'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  void _showTransferSuccessBanner(
+    BuildContext context,
+    int amountIDR,
+    String name,
+    double foreignAmount,
+    String currency,
+  ) {
+    final String message;
+    if (currency != 'IDR') {
+      final formattedForeignAmount = NumberFormat(
+        '#,##0.00',
+        'en_US',
+      ).format(foreignAmount);
+
+      message =
+          'Transfer ${currency} ${formattedForeignAmount} (≈ ${_formatCurrency(amountIDR)}) ke $name berhasil.';
+    } else {
+      message = 'Transfer ${_formatCurrency(amountIDR)} ke $name berhasil.';
+    }
+
+    final banner = MaterialBanner(
+      backgroundColor: Colors.green.shade600,
+      content: Text(message, style: const TextStyle(color: Colors.white)),
+      leading: const Icon(Icons.check_circle, color: Colors.white),
+      actions: [
+        TextButton(
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+            SchedulerBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                Navigator.pop(context, true); 
+              }
+            });
+          },
+          child: const Text('TUTUP', style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    );
+
+    ScaffoldMessenger.of(context).showMaterialBanner(banner);
+  }
+
+  void _showTransferErrorBanner(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).clearMaterialBanners();
+    final banner = MaterialBanner(
+      backgroundColor: Colors.red.shade600,
+      content: Text(
+        'Gagal Transfer: $message',
+        style: const TextStyle(color: Colors.white),
+      ),
+      leading: const Icon(Icons.error, color: Colors.white),
+      actions: [
+        TextButton(
+          onPressed:
+              () => ScaffoldMessenger.of(context).hideCurrentMaterialBanner(),
+          child: const Text('TUTUP', style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    );
+    ScaffoldMessenger.of(context).showMaterialBanner(banner);
+
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+      }
+    });
   }
 
   void _deleteTransfer(int index) {
-     // Paste logika delete asli...
-     setState(() {
-        _beneficiaries.removeAt(index);
-        _filterBeneficiaries();
-     });
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Hapus Penerima'),
+            content: Text(
+              'Anda yakin ingin menghapus ${_beneficiaries[index].name}?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Batal'),
+              ),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _beneficiaries.removeAt(index);
+                    _filterBeneficiaries();
+                  });
+                  Navigator.pop(context);
+                },
+                child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+              ),
+            ],
+          ),
+    );
   }
 
   void _navigateToAddTransfer() async {
@@ -187,9 +604,10 @@ class _TransferPageState extends State<TransferPage> {
       ),
       body: Column(
         children: [
-          _buildSearchBar(), // Search bar yang sudah dimodifikasi
+          _buildSearchBar(),
           Expanded(
-            child: _filteredBeneficiaries.isEmpty
+            child:
+                _filteredBeneficiaries.isEmpty
                     ? _buildEmptyState()
                     : ListView.builder(
                       padding: const EdgeInsets.all(8),
@@ -210,44 +628,23 @@ class _TransferPageState extends State<TransferPage> {
     );
   }
 
-  // MODIFIKASI SEARCH BAR
   Widget _buildSearchBar() {
     return Container(
       padding: const EdgeInsets.all(16),
       color: Colors.deepPurple,
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Cari nama, alias, atau rekening...',
-                hintStyle: TextStyle(color: Colors.grey[400]),
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              ),
-            ),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Cari nama, alias, atau rekening...',
+          hintStyle: TextStyle(color: Colors.grey[400]),
+          prefixIcon: const Icon(Icons.search, color: Colors.grey),
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
           ),
-          const SizedBox(width: 10),
-          // TOMBOL KONTAK BARU
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.orange, // Warna pembeda
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.contacts, color: Colors.white),
-              onPressed: _pickContact, // Panggil fungsi kontak
-              tooltip: "Pilih dari Kontak",
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

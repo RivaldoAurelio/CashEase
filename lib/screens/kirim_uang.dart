@@ -1,6 +1,7 @@
 // lib/screens/kirim_uang.dart
 import 'package:flutter/material.dart';
-// Ganti DatabaseHelper dengan FirestoreService
+import 'package:flutter_contacts/flutter_contacts.dart'; // Tambahan Import
+import 'package:permission_handler/permission_handler.dart'; // Tambahan Import
 import '../services/firestore_service.dart';
 
 class KirimUangPage extends StatefulWidget {
@@ -11,7 +12,6 @@ class KirimUangPage extends StatefulWidget {
 }
 
 class _KirimUangPageState extends State<KirimUangPage> {
-  // Gunakan FirestoreService
   final FirestoreService _firestoreService = FirestoreService();
   bool _isLoading = false;
 
@@ -47,7 +47,29 @@ class _KirimUangPageState extends State<KirimUangPage> {
   }
 
   void showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
+  // FUNGSI BARU: Ambil Kontak
+  Future<void> _pickContact() async {
+    if (await FlutterContacts.requestPermission()) {
+      final contact = await FlutterContacts.openExternalPick();
+      if (contact != null) {
+        if (contact.phones.isNotEmpty) {
+          // Ambil nomor pertama dan bersihkan karakter non-digit
+          String phone = contact.phones.first.number.replaceAll(RegExp(r'[^\d+]'), '');
+          
+          // Langsung jalankan proses transfer ke kontak tersebut
+          _sendMoney(recipientName: contact.displayName, recipientPhone: phone);
+        } else {
+          showMessage('Kontak ini tidak memiliki nomor telepon.');
+        }
+      }
+    } else {
+      showMessage('Izin kontak ditolak');
+    }
   }
 
   void _handleActionTap(String action) {
@@ -90,8 +112,6 @@ class _KirimUangPageState extends State<KirimUangPage> {
 
     setState(() => _isLoading = true);
     try {
-      // MODIFIKASI: Panggil addTransaction di Firestore.
-      // Logic di Service otomatis mengurangi saldo user (atomic).
       final success = await _firestoreService.addTransaction(
         userPhone: widget.phoneNumber!,
         type: 'transfer',
@@ -322,13 +342,25 @@ class _KirimUangPageState extends State<KirimUangPage> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: const InputDecoration(
-                        hintText: "cari no hp/rekening bank",
-                        border: InputBorder.none,
-                        icon: Icon(Icons.search),
-                      ),
+                    // MODIFIKASI: Menggunakan Row untuk kolom pencarian dan tombol kontak
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            decoration: const InputDecoration(
+                              hintText: "cari no hp/rekening bank",
+                              border: InputBorder.none,
+                              icon: Icon(Icons.search),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.contacts, color: Colors.deepPurple),
+                          onPressed: _pickContact,
+                          tooltip: 'Pilih dari Kontak',
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 20),

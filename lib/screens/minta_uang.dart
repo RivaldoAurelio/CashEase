@@ -1,6 +1,8 @@
-// lib/minta_uang.dart
+// lib/screens/minta_uang.dart
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:flutter_contacts/flutter_contacts.dart'; // Tambahan Import
+import 'package:permission_handler/permission_handler.dart'; // Tambahan Import
 
 class BagiUangPage extends StatefulWidget {
   const BagiUangPage({Key? key}) : super(key: key);
@@ -36,6 +38,23 @@ class _BagiUangPageState extends State<BagiUangPage> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  // FUNGSI BARU: Ambil Kontak
+  Future<void> _pickContact() async {
+    if (await FlutterContacts.requestPermission()) {
+      final contact = await FlutterContacts.openExternalPick();
+      if (contact != null) {
+        // Langsung buka dialog minta uang ke nama kontak yang dipilih
+        _showRequestDialog(contact.displayName);
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Izin kontak ditolak')),
+        );
+      }
+    }
   }
 
   void _showRequestDialog(String contactName) {
@@ -117,14 +136,26 @@ class _BagiUangPageState extends State<BagiUangPage> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
       ),
-      child: TextField(
-        controller: _searchController,
-        onChanged: (_) => setState(() {}),
-        decoration: const InputDecoration(
-          hintText: "cari no hp / rekening bank / nama",
-          border: InputBorder.none,
-          icon: Icon(Icons.search),
-        ),
+      // MODIFIKASI: Menggunakan Row untuk menampung TextField dan IconButton Kontak
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                hintText: "cari no hp / rekening bank / nama",
+                border: InputBorder.none,
+                icon: Icon(Icons.search),
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.contacts, color: Colors.deepPurple),
+            onPressed: _pickContact,
+            tooltip: "Pilih dari Kontak",
+          ),
+        ],
       ),
     );
   }
@@ -214,7 +245,6 @@ class _BagiUangPageState extends State<BagiUangPage> {
                   icon: const Icon(FontAwesomeIcons.link),
                   label: const Text("Link"),
                   onPressed: () {
-                    // TODO: generate shareable link
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Fitur Link (simulasi)')),
                     );
@@ -232,7 +262,6 @@ class _BagiUangPageState extends State<BagiUangPage> {
                   icon: const Icon(FontAwesomeIcons.qrcode),
                   label: const Text("Kode QR"),
                   onPressed: () {
-                    // TODO: show QR code generator
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Fitur QR (simulasi)')),
                     );
@@ -269,7 +298,6 @@ class _BagiUangPageState extends State<BagiUangPage> {
               ),
               OutlinedButton(
                 onPressed: () {
-                  // TODO: navigate to history page if exists
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Buka riwayat (simulasi)')),
                   );
@@ -283,7 +311,7 @@ class _BagiUangPageState extends State<BagiUangPage> {
                     horizontal: 8,
                     vertical: 2,
                   ),
-                  foregroundColor: Color(0xFF3A7BD5),
+                  foregroundColor: const Color(0xFF3A7BD5),
                   side: const BorderSide(color: Color(0xFF3A7BD5)),
                 ),
               ),
@@ -349,7 +377,6 @@ class _BagiUangPageState extends State<BagiUangPage> {
   }
 
   String _formatNumber(int value) {
-    // simple thousand separator
     final s = value.toString();
     final buffer = StringBuffer();
     int count = 0;

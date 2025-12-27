@@ -1,27 +1,28 @@
 // lib/screens/home.dart
+import 'dart:io'; // Untuk Platform check
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart'; // Import AdMob
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'beneficiary.dart';
-import 'creditcard.dart';
-import 'history.dart';
-import 'inbox.dart';
 import 'kirim_uang.dart';
-import 'loan.dart';
-import 'login.dart';
 import 'minta_uang.dart';
-import 'pocket.dart';
-import 'profile.dart';
-import 'qris.dart';
 import 'settings.dart';
+import 'profile.dart';
+import 'inbox.dart';
+import 'history.dart';
+import 'pocket.dart';
+import 'qris.dart';
+import 'withdraw.dart';
 import 'taxes.dart';
+import 'loan.dart';
+import 'creditcard.dart';
+import 'beneficiary.dart';
 import 'topup.dart';
 import 'transfer.dart';
-import 'withdraw.dart';
+import 'login.dart';
 
-// Import AppLocalizations & Firestore
-import '../l10n/app_localizations.dart';
+// Import FirestoreService
 import '../services/firestore_service.dart';
 
 class Home extends StatefulWidget {
@@ -44,6 +45,7 @@ class _HomeState extends State<Home> {
         History(phoneNumber: widget.phoneNumber),
         const QrisPage(),
         const Pocket(),
+        // Mengirim parameter userPhone ke ProfilePage
         ProfilePage(userPhone: widget.phoneNumber),
       ];
 
@@ -55,32 +57,26 @@ class _HomeState extends State<Home> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('loggedInPhone');
 
-    if (!context.mounted) return;
+    if (!mounted) return;
 
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => Login()),
-      (route) => false,
+      MaterialPageRoute(
+        builder: (context) => Login(),
+      ),
+      (Route<dynamic> route) => false,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Ambil Localization di root build agar Drawer & BottomNav ikut berubah
-    final l10n = AppLocalizations.of(context)!;
-
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      drawer: _buildNavigationDrawer(l10n),
+      drawer: _buildNavigationDrawer(),
       body: _pages[_selectedIndex],
-      bottomNavigationBar: _buildBottomNavBar(l10n),
+      bottomNavigationBar: _buildBottomNavBar(),
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // DRAWER
-  // ---------------------------------------------------------------------------
-
-  Widget _buildNavigationDrawer(AppLocalizations l10n) {
+  Widget _buildNavigationDrawer() {
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
@@ -135,10 +131,9 @@ class _HomeState extends State<Home> {
               ],
             ),
           ),
-
           _buildDrawerItem(
             icon: Icons.home,
-            title: l10n.homeTitle,
+            title: 'Home',
             onTap: () async {
               Navigator.pop(context);
               setState(() => _selectedIndex = 0);
@@ -146,7 +141,7 @@ class _HomeState extends State<Home> {
           ),
           _buildDrawerItem(
             icon: Icons.person,
-            title: l10n.profileTitle,
+            title: 'Profile',
             onTap: () async {
               Navigator.pop(context);
               setState(() => _selectedIndex = 4);
@@ -154,7 +149,7 @@ class _HomeState extends State<Home> {
           ),
           _buildDrawerItem(
             icon: Icons.account_balance_wallet,
-            title: l10n.pocketTitle,
+            title: 'My Pocket',
             onTap: () async {
               Navigator.pop(context);
               setState(() => _selectedIndex = 3);
@@ -162,25 +157,25 @@ class _HomeState extends State<Home> {
           ),
           _buildDrawerItem(
             icon: Icons.history,
-            title: l10n.transactionHistory,
+            title: 'Transaction History',
             onTap: () async {
               Navigator.pop(context);
               setState(() => _selectedIndex = 1);
             },
           ),
-
           const Divider(),
-          _buildDrawerSection(l10n.services),
-
+          _buildDrawerSection('Services'),
           _buildDrawerItem(
             icon: Icons.attach_money,
-            title: l10n.send,
+            title: 'Send Money',
             onTap: () async {
               Navigator.pop(context);
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => KirimUangPage(phoneNumber: widget.phoneNumber),
+                  builder:
+                      (context) =>
+                          KirimUangPage(phoneNumber: widget.phoneNumber),
                 ),
               );
               if (result == true) _refreshPage();
@@ -188,12 +183,12 @@ class _HomeState extends State<Home> {
           ),
           _buildDrawerItem(
             icon: Icons.request_page,
-            title: l10n.request,
+            title: 'Request Money',
             onTap: () async {
               Navigator.pop(context);
               await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const BagiUangPage()),
+                MaterialPageRoute(builder: (context) => const BagiUangPage()),
               );
             },
           ),
@@ -207,105 +202,100 @@ class _HomeState extends State<Home> {
           ),
           _buildDrawerItem(
             icon: Icons.atm,
-            title: l10n.withdraw,
+            title: 'Withdraw',
             onTap: () async {
               Navigator.pop(context);
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => WithdrawPage(phoneNumber: widget.phoneNumber),
+                  builder:
+                      (context) =>
+                          WithdrawPage(phoneNumber: widget.phoneNumber),
                 ),
               );
               if (result == true) _refreshPage();
             },
           ),
-
           const Divider(),
-          _buildDrawerSection(l10n.financial),
-
+          _buildDrawerSection('Financial'),
           _buildDrawerItem(
             icon: Icons.receipt_long,
-            title: l10n.menuTaxes,
+            title: 'Taxes',
             onTap: () async {
               Navigator.pop(context);
               final result = await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const TaxesPage()),
+                MaterialPageRoute(builder: (context) => const TaxesPage()),
               );
               if (result == true) _refreshPage();
             },
           ),
           _buildDrawerItem(
             icon: Icons.account_balance,
-            title: l10n.menuLoan,
+            title: 'Loans',
             onTap: () async {
               Navigator.pop(context);
               final result = await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const LoanPage()),
+                MaterialPageRoute(builder: (context) => const LoanPage()),
               );
               if (result == true) _refreshPage();
             },
           ),
           _buildDrawerItem(
             icon: Icons.savings,
-            title: l10n.savings,
+            title: 'Savings',
             onTap: () async {},
           ),
-
           const Divider(),
-          _buildDrawerSection(l10n.utilities),
-
+          _buildDrawerSection('Utilities'),
           _buildDrawerItem(
             icon: Icons.receipt,
-            title: l10n.menuBills,
+            title: 'Bill Payments',
             onTap: () async {},
           ),
           _buildDrawerItem(
             icon: Icons.phone_android,
-            title: l10n.mobilePrepaid,
+            title: 'Mobile Prepaid',
             onTap: () async {},
           ),
           _buildDrawerItem(
             icon: Icons.mail,
-            title: l10n.inbox,
+            title: 'Inbox',
             onTap: () async {
               Navigator.pop(context);
               await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const Inbox()),
+                MaterialPageRoute(builder: (context) => const Inbox()),
               );
             },
           ),
-
           const Divider(),
-          _buildDrawerSection(l10n.support),
-
+          _buildDrawerSection('Support'),
           _buildDrawerItem(
             icon: Icons.help_outline,
-            title: l10n.helpSupport,
+            title: 'Help & Support',
             onTap: () async {},
           ),
           _buildDrawerItem(
             icon: Icons.settings,
-            title: l10n.settingsTitle,
+            title: 'Settings',
             onTap: () async {
               Navigator.pop(context);
               await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const SettingsPage()),
+                MaterialPageRoute(builder: (context) => const SettingsPage()),
               );
             },
           ),
           _buildDrawerItem(
             icon: Icons.logout,
-            title: l10n.logout,
+            title: 'Logout',
             onTap: () async {
               Navigator.pop(context);
-              _showLogoutDialog(context, l10n);
+              _showLogoutDialog(context);
             },
           ),
-
           const SizedBox(height: 20),
         ],
       ),
@@ -339,52 +329,48 @@ class _HomeState extends State<Home> {
     );
   }
 
-  void _showLogoutDialog(BuildContext context, AppLocalizations l10n) {
+  void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(l10n.logout),
-        content: Text(l10n.logoutConfirmation),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(l10n.cancel),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _handleLogout(context);
-            },
-            child: Text(
-              l10n.logout,
-              style: const TextStyle(color: Colors.red),
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Logout'),
+          content: const Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(context).pop(),
             ),
-          ),
-        ],
-      ),
+            TextButton(
+              child: const Text('Logout'),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _handleLogout(context);
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // BOTTOM NAV
-  // ---------------------------------------------------------------------------
-
-  Widget _buildBottomNavBar(AppLocalizations l10n) {
+  Widget _buildBottomNavBar() {
     return BottomNavigationBar(
       currentIndex: _selectedIndex,
       type: BottomNavigationBarType.fixed,
       selectedItemColor: Colors.deepPurple,
       unselectedItemColor: Colors.grey,
       showUnselectedLabels: true,
-      onTap: (index) => setState(() => _selectedIndex = index),
+      onTap: (index) {
+        setState(() {
+          _selectedIndex = index;
+        });
+      },
       items: [
-        BottomNavigationBarItem(
-          icon: const Icon(Icons.home),
-          label: l10n.homeTitle,
-        ),
-        BottomNavigationBarItem(
-          icon: const Icon(Icons.history),
-          label: l10n.transactionHistory,
+        const BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+        const BottomNavigationBarItem(
+          icon: Icon(Icons.history),
+          label: "History",
         ),
         BottomNavigationBarItem(
           icon: Container(
@@ -399,24 +385,17 @@ class _HomeState extends State<Home> {
               size: 20,
             ),
           ),
-          label: '',
+          label: "",
         ),
-        BottomNavigationBarItem(
-          icon: const Icon(Icons.account_balance_wallet),
-          label: l10n.pocketTitle,
+        const BottomNavigationBarItem(
+          icon: Icon(Icons.account_balance_wallet),
+          label: "Pocket",
         ),
-        BottomNavigationBarItem(
-          icon: const Icon(Icons.person),
-          label: l10n.profileTitle,
-        ),
+        const BottomNavigationBarItem(icon: Icon(Icons.person), label: "Me"),
       ],
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// HOME HEADER & BODY
-// ---------------------------------------------------------------------------
 
 class HomePageContent extends StatelessWidget {
   final String phoneNumber;
@@ -454,33 +433,69 @@ class HomeHeaderBody extends StatefulWidget {
 class _HomeHeaderBodyState extends State<HomeHeaderBody> {
   bool _isAmountVisible = true;
   int _currentBalance = 0;
-  String _firstName = 'User';
 
   final FirestoreService _firestoreService = FirestoreService();
   bool _isLoading = true;
+
+  // --- LOGIKA IKLAN ADMOB (DIKEMBALIKAN) ---
+  BannerAd? _bannerAd;
+  bool _isAdLoaded = false;
+
+  final String _adUnitId = Platform.isAndroid
+      ? 'ca-app-pub-3940256099942544/6300978111' // Test ID Android
+      : 'ca-app-pub-3940256099942544/2934735716'; // Test ID iOS
+
+  void _loadBannerAd() {
+    _bannerAd = BannerAd(
+      adUnitId: _adUnitId,
+      request: const AdRequest(),
+      size: AdSize.banner,
+      listener: BannerAdListener(
+        onAdLoaded: (ad) {
+          if (mounted) {
+            setState(() {
+              _isAdLoaded = true;
+            });
+          }
+        },
+        onAdFailedToLoad: (ad, err) {
+          print('Banner Ad Failed to Load: $err');
+          ad.dispose();
+        },
+      ),
+    )..load();
+  }
+  // ----------------------------------------
 
   @override
   void initState() {
     super.initState();
     _loadBalance();
+    _loadBannerAd(); // Load iklan
+  }
+
+  @override
+  void dispose() {
+    _bannerAd?.dispose(); // Hapus iklan dari memori
+    super.dispose();
   }
 
   Future<void> _loadBalance() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
 
-    final userMap =
-        await _firestoreService.getUserByPhone(widget.phoneNumber);
+    final userMap = await _firestoreService.getUserByPhone(widget.phoneNumber);
 
-    if (!mounted) return;
-
-    setState(() {
-      if (userMap != null) {
-        _currentBalance = userMap['balance'] ?? 0;
-        _firstName = userMap['first_name'] ?? 'User';
-      }
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        if (userMap != null) {
+          _currentBalance = userMap['balance'] ?? 0;
+        } else {
+          _currentBalance = 0;
+        }
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _refreshBalance() async {
@@ -490,25 +505,28 @@ class _HomeHeaderBodyState extends State<HomeHeaderBody> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Column(
       children: [
-        _buildPurpleHeader(l10n),
-        Expanded(
-          child: SingleChildScrollView(
-            child: _buildMenuGrid(context, l10n),
+        _buildPurpleHeader(),
+        Expanded(child: SingleChildScrollView(child: _buildMenuGrid(context))),
+        
+        // --- TAMPILAN IKLAN BANNER (DIKEMBALIKAN) ---
+        if (_isAdLoaded && _bannerAd != null)
+          Container(
+            alignment: Alignment.center,
+            width: _bannerAd!.size.width.toDouble(),
+            height: _bannerAd!.size.height.toDouble(),
+            child: AdWidget(ad: _bannerAd!),
           ),
-        ),
       ],
     );
   }
 
-  Widget _buildPurpleHeader(AppLocalizations l10n) {
+  Widget _buildPurpleHeader() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
@@ -524,26 +542,50 @@ class _HomeHeaderBodyState extends State<HomeHeaderBody> {
                 Row(
                   children: [
                     Builder(
-                      builder: (context) => GestureDetector(
-                        onTap: () => Scaffold.of(context).openDrawer(),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
+                      builder: (scaffoldContext) {
+                        return GestureDetector(
+                          onTap:
+                              () => Scaffold.of(scaffoldContext).openDrawer(),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withAlpha(
+                                (0.2 * 255).toInt(),
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.menu,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
-                          child: const Icon(
-                            Icons.menu,
-                            color: Colors.white,
-                            size: 20,
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      width: 30,
+                      height: 30,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'C',
+                          style: TextStyle(
+                            color: Colors.deepPurple,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Text(
-                      l10n.welcomeUser(_firstName),
-                      style: const TextStyle(
+                    const SizedBox(width: 8),
+                    const Text(
+                      'CashEase',
+                      style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                         fontSize: 18,
@@ -552,10 +594,12 @@ class _HomeHeaderBodyState extends State<HomeHeaderBody> {
                   ],
                 ),
                 GestureDetector(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const Inbox()),
-                  ),
+                  onTap: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const Inbox()),
+                    );
+                  },
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
@@ -586,12 +630,11 @@ class _HomeHeaderBodyState extends State<HomeHeaderBody> {
                 ),
                 const SizedBox(width: 10),
                 GestureDetector(
-                  onTap: () =>
-                      setState(() => _isAmountVisible = !_isAmountVisible),
+                  onTap:
+                      () =>
+                          setState(() => _isAmountVisible = !_isAmountVisible),
                   child: Icon(
-                    _isAmountVisible
-                        ? Icons.lock_open
-                        : Icons.lock_outline,
+                    _isAmountVisible ? Icons.lock_open : Icons.lock_outline,
                     color: Colors.white,
                     size: 16,
                   ),
@@ -599,56 +642,63 @@ class _HomeHeaderBodyState extends State<HomeHeaderBody> {
               ],
             ),
             const SizedBox(height: 15),
-            _buildHeaderButtons(context, l10n),
+            _buildHeaderButtons(context),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeaderButtons(BuildContext context, AppLocalizations l10n) {
+  Widget _buildHeaderButtons(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildHeaderButton(Icons.add, l10n.topUp, () async {
-          // [FIX] Menggunakan bool untuk cek sukses/gagal
+        _buildHeaderButton(Icons.add, 'Isi Saldo', () async {
+          // [FIX] Menggunakan Navigator<bool> untuk menerima status sukses/gagal
           final success = await Navigator.push<bool>(
             context,
             MaterialPageRoute(
-              builder: (_) => TopUpPage(
-                currentBalance: _currentBalance,
-                phoneNumber: widget.phoneNumber,
-              ),
+              builder:
+                  (_) => TopUpPage(
+                    currentBalance: _currentBalance,
+                    phoneNumber: widget.phoneNumber,
+                  ),
             ),
           );
-          // [FIX] Tidak perlu addTransaction lagi, cukup refresh balance
+          // [FIX] Cek boolean true, lalu refresh balance
           if (success == true) {
             await _refreshBalance();
           }
         }),
-        _buildHeaderButton(Icons.attach_money, l10n.send, () async {
+        _buildHeaderButton(Icons.attach_money, 'Kirim', () async {
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => KirimUangPage(phoneNumber: widget.phoneNumber),
+              builder:
+                  (context) => KirimUangPage(phoneNumber: widget.phoneNumber),
             ),
           );
-          if (result == true) await _refreshBalance();
+          if (result == true) {
+            await _refreshBalance();
+          }
         }),
-        _buildHeaderButton(Icons.request_page, l10n.request, () async {
+        _buildHeaderButton(Icons.request_page, 'Minta', () async {
           await Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const BagiUangPage()),
+            MaterialPageRoute(builder: (context) => const BagiUangPage()),
           );
         }),
-        _buildHeaderButton(Icons.atm, l10n.withdraw, () async {
+        _buildHeaderButton(Icons.atm, 'Tarik', () async {
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => WithdrawPage(phoneNumber: widget.phoneNumber),
+              builder:
+                  (context) => WithdrawPage(phoneNumber: widget.phoneNumber),
             ),
           );
-          if (result == true) await _refreshBalance();
+          if (result == true) {
+            await _refreshBalance();
+          }
         }),
       ],
     );
@@ -660,7 +710,7 @@ class _HomeHeaderBodyState extends State<HomeHeaderBody> {
     Future<void> Function() onTap,
   ) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () async => await onTap(),
       child: Column(
         children: [
           Container(
@@ -668,7 +718,7 @@ class _HomeHeaderBodyState extends State<HomeHeaderBody> {
             height: 55,
             decoration: BoxDecoration(
               border: Border.all(
-                color: Colors.white.withOpacity(0.6),
+                color: Colors.white.withAlpha((0.6 * 255).toInt()),
                 width: 1.5,
               ),
               borderRadius: BorderRadius.circular(10),
@@ -682,150 +732,248 @@ class _HomeHeaderBodyState extends State<HomeHeaderBody> {
     );
   }
 
-  void _showTaxesLoanDrawer(BuildContext context, AppLocalizations l10n) {
+  void _showTaxesLoanDrawer(BuildContext context) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 10),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
+      builder: (BuildContext context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
             ),
-            const SizedBox(height: 20),
-            Text(
-              l10n.chooseOption,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 20),
-            ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-              leading: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: const BoxDecoration(
-                  color: Colors.deepPurple,
-                  shape: BoxShape.circle,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 10),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                child: const Icon(Icons.receipt_long, color: Colors.white),
               ),
-              title: Text(l10n.menuTaxes,
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(l10n.menuTaxesDesc),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              onTap: () async {
-                Navigator.pop(context);
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const TaxesPage()),
-                );
-                if (result == true) await _refreshBalance();
-              },
-            ),
-            const SizedBox(height: 10),
-            ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-              leading: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: const BoxDecoration(
-                  color: Colors.blue,
-                  shape: BoxShape.circle,
+              const SizedBox(height: 20),
+              const Text(
+                'Choose Option',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
-                child: const Icon(Icons.account_balance, color: Colors.white),
               ),
-              title: Text(l10n.menuLoan,
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(l10n.menuLoanDesc),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              onTap: () async {
-                Navigator.pop(context);
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoanPage()),
-                );
-                if (result == true) await _refreshBalance();
-              },
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
+              const SizedBox(height: 20),
+              GestureDetector(
+                onTap: () async {
+                  Navigator.pop(context);
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const TaxesPage()),
+                  );
+                  if (result == true) {
+                    await _refreshBalance();
+                  }
+                },
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: Colors.deepPurple.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.deepPurple.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: const BoxDecoration(
+                          color: Colors.deepPurple,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.receipt_long,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 15),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Taxes',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            Text(
+                              'Pay your tax obligations',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.deepPurple,
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 15),
+              GestureDetector(
+                onTap: () async {
+                  Navigator.pop(context);
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LoanPage()),
+                  );
+                  if (result == true) {
+                    await _refreshBalance();
+                  }
+                },
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: const BoxDecoration(
+                          color: Colors.blue,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.account_balance,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 15),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Loan',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            Text(
+                              'Manage your loan payments',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.blue,
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildMenuGrid(BuildContext context, AppLocalizations l10n) {
-    // Definisi item menu
+  Widget _buildMenuGrid(BuildContext context) {
     final List<Map<String, dynamic>> menuItems = [
       {
         'icon': Icons.account_balance,
-        'label': l10n.menuTransfer,
+        'label': 'Transfer',
         'onTap': () async {
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => TransferPage(phoneNumber: widget.phoneNumber),
+              builder:
+                  (context) => TransferPage(phoneNumber: widget.phoneNumber),
             ),
           );
-          if (result == true) await _refreshBalance();
+          if (result == true) {
+            await _refreshBalance();
+          }
         },
       },
       {
         'icon': Icons.credit_card,
-        'label': l10n.menuCreditCard,
+        'label': 'Credit Card',
         'onTap': () async {
           final result = await Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => CreditCardPaymentPage()),
+            MaterialPageRoute(builder: (context) => CreditCardPaymentPage()),
           );
-          if (result == true) await _refreshBalance();
+          if (result == true) {
+            await _refreshBalance();
+          }
         },
       },
       {
         'icon': Icons.account_box,
-        'label': l10n.menuBeneficiary,
-        'onTap': () async => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => BeneficiaryPage()),
-        ),
+        'label': 'Beneficiary',
+        'onTap': () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => BeneficiaryPage()),
+          );
+        },
       },
-      {
-        'icon': Icons.receipt,
-        'label': l10n.menuBills,
-        'onTap': () async {}, // Placeholder
-      },
+      {'icon': Icons.receipt, 'label': 'Bills', 'onTap': () async {}},
       {
         'icon': Icons.attach_money,
-        'label': l10n.menuTaxesLoan,
-        'onTap': () async => _showTaxesLoanDrawer(context, l10n),
+        'label': 'Taxes/Loan',
+        'onTap': () async => _showTaxesLoanDrawer(context),
       },
       {
         'icon': Icons.phone_android,
-        'label': l10n.topUp,
+        'label': 'Top-up',
         'onTap': () async {
-          // [FIX] Gunakan bool
-          final success = await Navigator.push<bool>(
+          final added = await Navigator.push<int>(
             context,
             MaterialPageRoute(
-              builder: (_) => TopUpPage(
-                currentBalance: _currentBalance,
-                phoneNumber: widget.phoneNumber,
-              ),
+              builder:
+                  (_) => TopUpPage(
+                    currentBalance: _currentBalance,
+                    phoneNumber: widget.phoneNumber,
+                  ),
             ),
           );
-          if (success == true) {
+          if (added != null && added > 0) {
+            await _firestoreService.addTransaction(
+              userPhone: widget.phoneNumber,
+              type: 'topup',
+              amount: added,
+              description: 'Top Up Saldo',
+            );
             await _refreshBalance();
           }
         },
@@ -843,12 +991,8 @@ class _HomeHeaderBodyState extends State<HomeHeaderBody> {
         ),
         itemBuilder: (context, index) {
           final item = menuItems[index];
-          
           return GestureDetector(
-            // [FIX] Casting yang lebih aman agar tidak merah
-            onTap: item['onTap'] == null 
-                ? null 
-                : () => (item['onTap'] as Function)(),
+            onTap: item['onTap'],
             child: Column(
               children: [
                 Container(
@@ -858,15 +1002,11 @@ class _HomeHeaderBodyState extends State<HomeHeaderBody> {
                     color: Colors.deepPurple.shade50,
                     borderRadius: BorderRadius.circular(15),
                   ),
-                  child: Icon(
-                    item['icon'] as IconData,
-                    color: Colors.deepPurple, 
-                    size: 30
-                  ),
+                  child: Icon(item['icon'], color: Colors.deepPurple, size: 30),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  item['label'] as String,
+                  item['label'],
                   style: const TextStyle(fontSize: 13),
                   textAlign: TextAlign.center,
                 ),

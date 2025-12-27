@@ -5,6 +5,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter_localizations/flutter_localizations.dart'; 
+import 'package:google_mobile_ads/google_mobile_ads.dart'; // 🔹 IMPORT ADMOB
 import 'firebase_options.dart';
 import 'screens/screen.dart';
 import 'l10n/app_localizations.dart'; // Pastikan path ini benar
@@ -18,6 +19,9 @@ Future<void> main() async {
   }
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // 🔹 INISIALISASI ADMOB SEBELUM RUNAPP
+  await MobileAds.instance.initialize();
 
   runApp(const MyApp());
 }

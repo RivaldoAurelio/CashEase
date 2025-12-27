@@ -1,3 +1,4 @@
+// lib/screens/profile.dart
 import 'dart:io'; // Tambahan untuk File
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -224,6 +225,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void _showGoalDialog(int index) {
     final goal = savingGoals[index];
     final TextEditingController depositController = TextEditingController();
+    // ignore: unused_local_variable
     final depositFormKey = GlobalKey<FormState>();
 
     showDialog(

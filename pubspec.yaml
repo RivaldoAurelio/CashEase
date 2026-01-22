@@ -1,0 +1,81 @@
+name: tugas
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  provider: ^6.0.0
+  firebase_core: ^3.4.0
+  firebase_analytics: ^11.6.0
+  cloud_firestore: ^5.4.0
+  intl: ^0.20.2
+  cupertino_icons: ^1.0.8
+  font_awesome_flutter: ^10.8.0
+  pin_code_fields: ^8.0.0
+  sqflite: ^2.4.2
+  sqflite_common_ffi: ^2.3.6
+  shared_preferences: ^2.2.3  
+  http: ^1.2.0             
+  crypto: ^3.0.3            
+  path: ^1.8.3
+  image_picker: ^1.0.7       
+  mobile_scanner: ^5.0.0     
+  flutter_contacts: ^1.1.9+1 
+  permission_handler: ^11.3.0
+  firebase_messaging: ^15.0.0
+  flutter_local_notifications: ^17.0.0
+  google_mobile_ads: ^5.1.0
+
+dev_dependencies:
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.0
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+# 🔹 KONFIGURASI ICON DI SINI
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "asset/shortcuticon.png" # Pastikan file shortcuticon.png sudah ada di folder asset
+  min_sdk_android: 21 
+
+flutter_native_splash:
+  color: "#ffffff"
+  image: asset/logo.png
+  android: true
+  ios: true
+
+flutter:
+  generate: true
+  uses-material-design: true
+
+  assets:
+    - asset/logo.png
+    - asset/logo2.png
+    - asset/elogo1.png
+    - asset/elogo2.png
+    - asset/elogo3.png
+    - asset/elogo4.png
+    - asset/elogo5.png
+    - asset/foto.png
+    - asset/iconlogo.png
+    - asset/ilogo1.png
+    - asset/ilogo2.png
+    - asset/ilogo3.png
+    - asset/ilogo4.png
+    - asset/ilogo5.png
+    - asset/ilogo6.png
+    - asset/ilogo7.png
+    - asset/ilogo8.png
+    - asset/kodeqr.png
+    # Tambahkan shortcuticon.png agar terbaca asetnya
+    - asset/shortcuticon.png

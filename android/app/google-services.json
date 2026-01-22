@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "560111841252",
+    "project_id": "cashease-d6816",
+    "storage_bucket": "cashease-d6816.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:560111841252:android:b456ff9dec8b0318c8e1f1",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAdR99ctaGC6uxfaGgsLvULTPIfMuKnmw0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
